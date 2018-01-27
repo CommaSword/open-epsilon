@@ -9,7 +9,7 @@ function delay(timeout: number) {
 
 const NETWORK_GRACE = 30;
 
-describe('osc driver', () => {
+describe('osc driver (real network test)', () => {
     const MSG: OscMessage = {address: '/foo/bar', args: [{type: 'f', value: 5.677999973297119}]};
 
     const sent = spy();
