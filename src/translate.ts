@@ -3,12 +3,12 @@ import {
     isPrimitiveOrArrayOfPrimitiveType,
     PrimitiveType,
     ProcessedResource,
-    ProcessedType,
-    ProcessedSchema
+    ProcessedSchema,
+    ProcessedType
 } from "./process-schema";
-import {Argument, MetaArgument, OscMessage} from "osc";
-import naming = require('naming');
+import {OscMessage} from "osc";
 import {EMissileWeapons, ESystem} from "empty-epsilon-js";
+import naming = require('naming');
 
 export interface GameQuery {
     address: string;
@@ -30,16 +30,16 @@ function translateType(pt: PrimitiveType | Array<PrimitiveType>): string {
     return pt instanceof Array ? pt.map(translatePrimitiveType).join('') : translatePrimitiveType(pt);
 }
 
-function enumAddresItemToArgument(addressItem : string, enumObj: any, enumName: string){
+function enumAddresItemToArgument(addressItem: string, enumObj: any, enumName: string) {
     const name = naming(addressItem, 'pascal');
-    if (typeof enumObj[name] === 'undefined'){
+    if (typeof enumObj[name] === 'undefined') {
         throw new Error(`bad ${enumName} name ${name}`);
     }
-    return '"'+name+'"';
+    return '"' + name + '"';
 }
 
-function addressItemToArgument(addressItem: string, argumentSchema: PrimitiveType | EnumType): string{
-    switch(argumentSchema){
+function addressItemToArgument(addressItem: string, argumentSchema: PrimitiveType | EnumType): string {
+    switch (argumentSchema) {
         case "float" :
             return Number.parseFloat(addressItem).toFixed(2);
         case "integer" :
@@ -54,96 +54,103 @@ function addressItemToArgument(addressItem: string, argumentSchema: PrimitiveTyp
     }
 }
 
-function addressArrToArguments(addressParts : Array<string>, argumentsSchema: Array<PrimitiveType | EnumType>){
-    return argumentsSchema.map((t, i)=> addressItemToArgument(addressParts[i], t))
+function addressArrToArguments(addressParts: Array<string>, argumentsSchema: Array<PrimitiveType | EnumType>) {
+    return argumentsSchema.map((t, i) => addressItemToArgument(addressParts[i], t))
 }
 
-// export function translateOscMessageToGameCommand(address: string, oscArgs: Array<MetaArgument> | Array<Argument>): GameCommand {
-export function translateOscMessageToGameCommand(apiModel : ProcessedSchema, message: OscMessage): GameCommand {
-    const addressArr = message.address.split('/');
-    const oscArgs: Array<any> = message.args instanceof Array ? message.args : [message.args];
-    const vals = addressArr.concat(oscArgs.map<string>(arg => '' + (arg.value == undefined ? arg : arg.value)));
-  //  console.info(`handling command: ${vals.join('/')}`);
+export class MessageTranslator {
+    translateOscMessageToGameCommand = (message: OscMessage): GameCommand => {
+        const addressArr = message.address.split('/');
+        const oscArgs: Array<any> = message.args instanceof Array ? message.args : [message.args];
+        const vals = addressArr.concat(oscArgs.map<string>(arg => '' + (arg.value == undefined ? arg : arg.value)));
+        //  console.info(`handling command: ${vals.join('/')}`);
 
-    // assert address begins with '/ee/'
-    if (addressArr[0] !== '' || addressArr[1] !== 'ee') {
-        throw new Error(`ilegal address prefix ${ message.address}`);
+        this.assertNamespaceAddress(addressArr);
+
+        let addrIdx = 2;
+        let path: string[] = [];
+        let currentType: ProcessedType = this.apiModel.global;
+
+        while (addrIdx < addressArr.length) {
+            if (isPrimitiveOrArrayOfPrimitiveType(currentType)) {
+                throw new Error(`reached a primitive result ${currentType} before address is finished ${message.address}`);
+            } else {
+                const symbolName = addressArr[addrIdx++];
+                const symbol: ProcessedResource = currentType[symbolName];
+                if (symbol) {
+                    // the +1 makes us not use getters that exhaust the entire address. the last part needs to be a setter.
+                    if (symbol && symbol.get && addrIdx < addressArr.length - symbol.get.arguments.length) {
+                        currentType = symbol.get.type;
+                        const lastArdIdx = addrIdx + symbol.get.arguments.length;
+                        path.push(`${symbol.get.methodName}(${addressArrToArguments(addressArr.slice(addrIdx, lastArdIdx), symbol.get.arguments).join(',')})`);
+                        addrIdx = lastArdIdx;
+                    } else if (symbol && symbol.set && addrIdx <= vals.length - symbol.set.arguments.length) { // last one is a setter, its arguments are taken from the vals array
+                        const lastArdIdx = addrIdx + symbol.set.arguments.length;
+                        path.push(symbol.set.methodName);
+                        const setter = path.join(':');
+                        const values = addressArrToArguments(vals.slice(addrIdx, lastArdIdx), symbol.set.arguments);
+                        const numOfStaticValues = addressArr.length - addrIdx;
+                        return {
+                            template: `${setter}(${values.map((v, idx) => idx >= numOfStaticValues ? `{${idx - numOfStaticValues}}` : v).join(', ')})`,
+                            values: values.slice(numOfStaticValues)
+                        }
+                    } else {
+                        throw new Error(`reached a symbol with no matching methods '${symbolName}' in ${vals}`);
+                    }
+                } else {
+                    throw new Error(`reached an unknown symbol '${symbolName}' in ${message.address}`);
+                }
+            }
+        }
+        throw new Error(`reached a non-primitive result ${currentType} but address is finished ${message.address}`);
     }
+    translateAddressToGameQuery = (address: string): GameQuery => {
+        const addressArr = address.split('/');
 
-    let addrIdx = 2;
-    let path: string[] = [];
-    let currentType: ProcessedType = apiModel.global;
+        this.assertNamespaceAddress(addressArr);
 
-    while (addrIdx < addressArr.length) {
-        if (isPrimitiveOrArrayOfPrimitiveType(currentType)) {
-            throw new Error(`reached a primitive result ${currentType} before address is finished ${message.address}`);
-        } else {
-            const symbolName = addressArr[addrIdx++];
-            const symbol: ProcessedResource = currentType[symbolName];
-            if (symbol) {
-                // the +1 makes us not use getters that exhaust the entire address. the last part needs to be a setter.
-                if (symbol && symbol.get && addrIdx < addressArr.length - symbol.get.arguments.length) {
+        let addrIdx = 2;
+        let path: string[] = [];
+        let currentType: ProcessedType = this.apiModel.global;
+
+        while (addrIdx < addressArr.length) {
+            if (isPrimitiveOrArrayOfPrimitiveType(currentType)) {
+                throw new Error(`reached a primitive result ${currentType} before address is finished ${address}`);
+            } else {
+                const symbolName = addressArr[addrIdx++];
+                const symbol: ProcessedResource = currentType[symbolName];
+                if (symbol && symbol.get && addrIdx <= addressArr.length - symbol.get.arguments.length) {
                     currentType = symbol.get.type;
                     const lastArdIdx = addrIdx + symbol.get.arguments.length;
                     path.push(`${symbol.get.methodName}(${addressArrToArguments(addressArr.slice(addrIdx, lastArdIdx), symbol.get.arguments).join(',')})`);
                     addrIdx = lastArdIdx;
-                } else if (symbol && symbol.set && addrIdx <= vals.length - symbol.set.arguments.length) { // last one is a setter, its arguments are taken from the vals array
-                    const lastArdIdx = addrIdx + symbol.set.arguments.length;
-                    path.push(symbol.set.methodName);
-                    const setter = path.join(':');
-                    const values = addressArrToArguments(vals.slice(addrIdx, lastArdIdx), symbol.set.arguments);
-                    const numOfStaticValues =  addressArr.length - addrIdx;
-                    return {
-                        template: `${setter}(${values.map((v, idx) => idx >= numOfStaticValues? `{${idx - numOfStaticValues}}` : v).join(', ')})`,
-                        values: values.slice(numOfStaticValues)
-                    }
                 } else {
-                    throw new Error(`reached a symbol with no matching methods '${symbolName}' in ${vals}`);
+                    throw new Error(`reached an unknown symbol '${symbolName}' in ${address}`);
                 }
-            } else {
-                throw new Error(`reached an unknown symbol '${symbolName}' in ${message.address}`);
             }
         }
-    }
-    throw new Error(`reached a non-primitive result ${currentType} but address is finished ${message.address}`);
-}
-
-
-export function translateAddressToGameQuery(apiModel : ProcessedSchema, address: string): GameQuery {
-    const addressArr = address.split('/');
-
-    // assert address begins with '/ee/'
-    if (addressArr[0] !== '' || addressArr[1] !== 'ee') {
-        throw new Error(`ilegal address prefix ${ address}`);
-    }
-
-    let addrIdx = 2;
-    let path: string[] = [];
-    let currentType: ProcessedType = apiModel.global;
-
-    while (addrIdx < addressArr.length) {
         if (isPrimitiveOrArrayOfPrimitiveType(currentType)) {
-            throw new Error(`reached a primitive result ${currentType} before address is finished ${address}`);
-        } else {
-            const symbolName = addressArr[addrIdx++];
-            const symbol: ProcessedResource = currentType[symbolName];
-            if (symbol && symbol.get && addrIdx <= addressArr.length - symbol.get.arguments.length) {
-                currentType = symbol.get.type;
-                const lastArdIdx = addrIdx + symbol.get.arguments.length;
-                path.push(`${symbol.get.methodName}(${addressArrToArguments(addressArr.slice(addrIdx, lastArdIdx), symbol.get.arguments).join(',')})`);
-                addrIdx = lastArdIdx;
-            } else {
-                throw new Error(`reached an unknown symbol '${symbolName}' in ${address}`);
+            return {
+                address: address,
+                expr: path.join(':'),
+                type: translateType(currentType)
             }
+        } else {
+            throw new Error(`reached a non-primitive result ${currentType} but address is finished ${address}`);
         }
     }
-    if (isPrimitiveOrArrayOfPrimitiveType(currentType)) {
-        return {
-            address: address,
-            expr: path.join(':'),
-            type: translateType(currentType)
+
+    constructor(private apiModel: ProcessedSchema, private namespace: string = 'ee') {
+        if (~namespace.indexOf('/')) {
+            throw new Error(`namespace '${namespace}' contains address delimiter '/'`);
         }
-    } else {
-        throw new Error(`reached a non-primitive result ${currentType} but address is finished ${address}`);
     }
+
+    private assertNamespaceAddress(addressArr: Array<string>) {
+        // assert address begins with namespace
+        if (addressArr[0] !== '' || addressArr[1] !== this.namespace) {
+            throw new Error(`ilegal address prefix ${ addressArr.join('/')}`);
+        }
+    }
+
 }

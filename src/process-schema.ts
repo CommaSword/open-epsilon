@@ -21,7 +21,10 @@ export type GameContext<S extends GameSchema> = {
     [k: string]: GameContextName<S> | GameMethod<S>;
 }
 
-export type ProcessedSchema = { [k: string]: ProcessedContext };
+export type ProcessedSchema = {
+    global: ProcessedContext,
+    [k: string]: ProcessedContext
+};
 
 export type ProcessedType = ProcessedContext | Array<PrimitiveType>;
 
@@ -97,7 +100,7 @@ export function processApiSchema<S extends GameSchema>(generatedGameSchema: Game
                         arguments: generatedMethodMeta.arguments,
                         type: type,
                     };
-                } else  if (methodVerb === 'set') {
+                } else if (methodVerb === 'set') {
                     methodContext[propertyName] = methodContext[propertyName] || {};
                     methodContext[propertyName].set = {
                         methodName: methodName,

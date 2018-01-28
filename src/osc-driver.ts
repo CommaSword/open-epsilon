@@ -6,10 +6,9 @@ import {NodeStyleEventEmitter} from 'rxjs/observable/FromEventObservable';
 
 export class OscDriver {
     private readonly subscription: Subscription;
-
-    public readonly inbox: Observable<OscMessage>;
     private readonly port: UDPPort;
     private readonly subject = new Subject<OscMessage>();
+    public readonly inbox: Observable<OscMessage>;
     public readonly outbox: NextObserver<OscMessage> = this.subject;
 
     constructor(options: UdpOptions) {
