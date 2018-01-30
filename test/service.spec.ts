@@ -6,7 +6,7 @@ import {OscMessage} from "osc";
 import {expect} from 'chai';
 import {GameSchema} from "../src/ee-schema";
 
-describe(`OpenEpsilon class`, () => {
+describe(`OpenEpsilon service`, () => {
 
     const schema: GameSchema = {
         "global": {
