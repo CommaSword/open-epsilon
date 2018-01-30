@@ -1,7 +1,7 @@
-import {OscDriver} from "../src";
 import {OscMessage, UDPPort} from "osc";
 import {spy} from "sinon";
 import {expect} from "chai";
+import {OscUdpDriver} from "../src/osc-udp-driver";
 
 function delay(timeout: number) {
     return new Promise(r => setTimeout(r, timeout));
@@ -9,14 +9,13 @@ function delay(timeout: number) {
 
 const NETWORK_GRACE = 30;
 
-describe('osc driver (real network test)', () => {
+describe('OscUdpDriver (real network test)', () => {
     const MSG: OscMessage = {address: '/foo/bar', args: [{type: 'f', value: 5.677999973297119}]};
 
     const sent = spy();
     const received = spy();
 
-    let oscDriver = new OscDriver({
-
+    let oscDriver = new OscUdpDriver({
         remotePort: 56668,
         localPort: 56667,
         localAddress: '0.0.0.0',

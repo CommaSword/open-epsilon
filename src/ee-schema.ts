@@ -1,6 +1,38 @@
-import {GameSchema} from "./process-schema";
+export type PrimitiveType = 'float' | 'integer' | 'bool';
 
-export default {
+export type EnumType = "ESystem" | "EMissileWeapons";
+
+export interface GameSchema {
+    [k: string]: GameContext<this>;
+}
+
+export type GameContextName<S extends GameSchema> = keyof S;
+
+export type GameValueType<S extends GameSchema> = [GameContextName<S>] | Array<PrimitiveType>;
+
+export type GameMethod<S extends GameSchema> = {
+    arguments: Array<PrimitiveType | EnumType>,
+    type: GameValueType<S>
+};
+
+export type GameContext<S extends GameSchema> = {
+    [k: string]: GameContextName<S> | GameMethod<S>;
+}
+
+export function isPrimitiveType(t: any): t is PrimitiveType {
+    return t === 'float' || t === 'integer';
+}
+
+export function isPrimitiveOrArrayOfPrimitiveType(t: any): t is (PrimitiveType | Array<PrimitiveType>) {
+    return t instanceof Array ? t.every(t1 => isPrimitiveType(t1)) : isPrimitiveType(t);
+}
+
+export function isGameMethod(t: any): t is GameMethod<any> {
+    return typeof t === 'object' && t && t.arguments !== undefined && typeof t.type !== 'undefined';
+}
+
+
+export const emptyEpsilonSchema = {
     "global": {
         "getPlayerShip": {
             "arguments": ["integer"],

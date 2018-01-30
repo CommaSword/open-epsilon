@@ -30,7 +30,7 @@ export function getMonitoredAddresses(fs: FileSystem): Array<string> {
     return result;
 }
 
-export function monitorByAddress(pollRequests: Observable<any>, eeDriver: EEDriver, translator: (address: string) => GameQuery): Observable<OscMessage> {
+export function monitorByAddress(pollRequests: Observable<string>, eeDriver: EEDriver, translator: (address: string) => GameQuery): Observable<OscMessage> {
     return pollRequests
         .map<string, GameQuery>(translator)
         .flatMap<GameQuery, Array<number>, OscMessage>(
@@ -44,7 +44,6 @@ export function monitorByAddress(pollRequests: Observable<any>, eeDriver: EEDriv
 
 export function executeDriverCommands(pushRequests: Observable<OscMessage>, eeDriver: EEDriver, translator: (message: OscMessage) => GameCommand): Subscription {
     return pushRequests
-        .filter(m => m.address.startsWith('/ee/'))
         .map<OscMessage, GameCommand>(translator)
         .subscribe(gc => eeDriver.command(gc.template, gc.values));
 }

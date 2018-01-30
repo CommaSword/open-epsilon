@@ -1,25 +1,13 @@
 import naming = require('naming');
-
-export type PrimitiveType = 'float' | 'integer' | 'bool';
-
-export type EnumType = "ESystem" | "EMissileWeapons";
-
-export interface GameSchema {
-    [k: string]: GameContext<this>;
-}
-
-export type GameContextName<S extends GameSchema> = keyof S;
-
-export type GameValueType<S extends GameSchema> = [GameContextName<S>] | Array<PrimitiveType>;
-
-export type GameMethod<S extends GameSchema> = {
-    arguments: Array<PrimitiveType | EnumType>,
-    type: GameValueType<S>
-};
-
-export type GameContext<S extends GameSchema> = {
-    [k: string]: GameContextName<S> | GameMethod<S>;
-}
+import {
+    EnumType,
+    GameContext,
+    GameContextName,
+    GameSchema,
+    isGameMethod,
+    isPrimitiveOrArrayOfPrimitiveType,
+    PrimitiveType
+} from "./ee-schema";
 
 export type ProcessedSchema = {
     global: ProcessedContext,
@@ -48,18 +36,6 @@ export type ProcessedContext = {
     [k: string]: ProcessedResource;
 }
 
-
-export function isPrimitiveType(t: any): t is PrimitiveType {
-    return t === 'float' || t === 'integer';
-}
-
-export function isPrimitiveOrArrayOfPrimitiveType(t: any): t is (PrimitiveType | Array<PrimitiveType>) {
-    return t instanceof Array ? t.every(t1 => isPrimitiveType(t1)) : isPrimitiveType(t);
-}
-
-function isGameMethod(t: any): t is GameMethod<any> {
-    return typeof t === 'object' && t && t.arguments !== undefined && typeof t.type !== 'undefined';
-}
 
 function initContextNode<S extends GameSchema>(ctxName: keyof S, generatedGameSchema: S, processedGameSchema: ProcessedSchema) {
     const existingContext = (processedGameSchema as any)[ctxName];

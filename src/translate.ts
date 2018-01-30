@@ -1,13 +1,7 @@
-import {
-    EnumType,
-    isPrimitiveOrArrayOfPrimitiveType,
-    PrimitiveType,
-    ProcessedResource,
-    ProcessedSchema,
-    ProcessedType
-} from "./process-schema";
+import {ProcessedResource, ProcessedSchema, ProcessedType} from "./process-schema";
 import {OscMessage} from "osc";
 import {EMissileWeapons, ESystem} from "empty-epsilon-js";
+import {EnumType, isPrimitiveOrArrayOfPrimitiveType, PrimitiveType} from "./ee-schema";
 import naming = require('naming');
 
 export interface GameQuery {
@@ -140,7 +134,7 @@ export class MessageTranslator {
         }
     }
 
-    constructor(private apiModel: ProcessedSchema, private namespace: string = 'ee') {
+    constructor(private apiModel: ProcessedSchema, private namespace: string) {
         if (~namespace.indexOf('/')) {
             throw new Error(`namespace '${namespace}' contains address delimiter '/'`);
         }

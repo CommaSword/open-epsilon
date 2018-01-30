@@ -2,16 +2,19 @@ import {OscMessage, UdpOptions, UDPPort} from "osc";
 import {Observable, Subject, Subscription} from 'rxjs';
 import {NextObserver} from "rxjs/Observer";
 import {NodeStyleEventEmitter} from 'rxjs/observable/FromEventObservable';
+import {OscDriver} from "./service";
 
 
-export class OscDriver {
+export class OscUdpDriver implements OscDriver {
+    public readonly inbox: Observable<OscMessage>;
+    public readonly outbox: NextObserver<OscMessage>;
     private readonly subscription: Subscription;
     private readonly port: UDPPort;
-    private readonly subject = new Subject<OscMessage>();
-    public readonly inbox: Observable<OscMessage>;
-    public readonly outbox: NextObserver<OscMessage> = this.subject;
+    private readonly subject: Subject<OscMessage>;
 
     constructor(options: UdpOptions) {
+        this.subject = new Subject<OscMessage>();
+        this.outbox = this.subject;
         options = Object.assign({},
             {
                 remoteAddress: "255.255.255.255",

@@ -1,9 +1,10 @@
 import {expect} from 'chai';
-import {GameSchema, processApiSchema} from "../src/process-schema";
+import {processApiSchema} from "../src/process-schema";
+import {GameSchema} from "../src/ee-schema";
 
 describe('processApiSchema', () => {
     it('works on simple input', () => {
-        const input = {
+        const input: GameSchema = {
             "global": {
                 "getPlayerShip": {
                     "arguments": ["integer"],
@@ -26,7 +27,7 @@ describe('processApiSchema', () => {
                     "type": []
                 },
             }
-        } as GameSchema;
+        };
         const output = processApiSchema(input) as any;
         for (let k in input) {
             expect(output[k], 'output.' + k).to.be.ok;

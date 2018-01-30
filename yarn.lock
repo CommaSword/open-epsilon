@@ -288,9 +288,9 @@ ecc-jsbn@~0.1.1:
   dependencies:
     jsbn "~0.1.0"
 
-empty-epsilon-js@1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/empty-epsilon-js/-/empty-epsilon-js-1.0.0.tgz#4c7526ab67613a2c866c726dea850e54368d45e5"
+empty-epsilon-js@1.0.2:
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/empty-epsilon-js/-/empty-epsilon-js-1.0.2.tgz#d43c150ae05019c672e02c385989943158fb95e9"
   dependencies:
     axios "0.15.3"
     string-template "^1.0.0"
