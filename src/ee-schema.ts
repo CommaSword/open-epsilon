@@ -6,7 +6,7 @@ export interface GameSchema {
     [k: string]: GameContext<this>;
 }
 
-export type GameContextName<S extends GameSchema> = keyof S;
+export type GameContextName<S extends GameSchema> = keyof S & string;
 
 export type GameValueType<S extends GameSchema> = [GameContextName<S>] | Array<PrimitiveType>;
 

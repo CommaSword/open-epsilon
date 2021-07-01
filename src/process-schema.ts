@@ -1,12 +1,13 @@
 import naming = require('naming');
+
 import {
     EnumType,
     GameContext,
     GameContextName,
     GameSchema,
+    PrimitiveType,
     isGameMethod,
-    isPrimitiveOrArrayOfPrimitiveType,
-    PrimitiveType
+    isPrimitiveOrArrayOfPrimitiveType
 } from "./ee-schema";
 
 export type ProcessedSchema = {
@@ -37,7 +38,7 @@ export type ProcessedContext = {
 }
 
 
-function initContextNode<S extends GameSchema>(ctxName: keyof S, generatedGameSchema: S, processedGameSchema: ProcessedSchema) {
+function initContextNode<S extends GameSchema>(ctxName: GameContextName<S>, generatedGameSchema: S, processedGameSchema: ProcessedSchema) {
     const existingContext = (processedGameSchema as any)[ctxName];
     if (existingContext) {
         return existingContext;
@@ -55,12 +56,12 @@ export function processApiSchema<S extends GameSchema>(generatedGameSchema: Game
     const processedGameSchema: ProcessedSchema = {} as any;
 
     for (let ctxName of Object.keys(generatedGameSchema)) {
-        initContextNode(ctxName as GameContextName<S>, generatedGameSchema, processedGameSchema);
+        initContextNode(ctxName as GameContextName<GameSchema>, generatedGameSchema, processedGameSchema);
     }
 
     for (let ctxName of Object.keys(generatedGameSchema) as GameContextName<S>[]) {
         const ctx: GameContext<S> = (generatedGameSchema as any)[ctxName];
-        const methodContext = processedGameSchema[ctxName];
+        const methodContext: ProcessedContext = processedGameSchema[ctxName];
         for (let methodName of Object.keys(ctx).filter(k => !k.startsWith('$'))) {
             const generatedMethodMeta = ctx[methodName];
             if (isGameMethod(generatedMethodMeta)) {

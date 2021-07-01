@@ -1,9 +1,9 @@
-import {OscMessage, UdpOptions, UDPPort} from "osc";
 import {Observable, Subject, Subscription} from 'rxjs';
+import {OscMessage, UDPPort, UdpOptions} from "osc";
+
 import {NextObserver} from "rxjs/Observer";
 import {NodeStyleEventEmitter} from 'rxjs/observable/FromEventObservable';
 import {OscDriver} from "./service";
-
 
 export class OscUdpDriver implements OscDriver {
     public readonly inbox: Observable<OscMessage>;
@@ -37,7 +37,7 @@ export class OscUdpDriver implements OscDriver {
 
     async open() {
         this.port.open();
-        await new Promise(res => this.port.once('ready', res));
+        await new Promise<void>(res => this.port.once('ready', res));
     }
 
     close() {
