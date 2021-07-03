@@ -1,12 +1,14 @@
-import {Observable} from 'rxjs';
-import {EEDriver} from "empty-epsilon-js";
+import {GameSchema, emptyEpsilonSchema} from './ee-schema';
+import {Observable, interval as rxInterval} from 'rxjs';
 import {executeDriverCommands, monitorByAddress} from "./game-monitor";
+import { filter, switchMap } from 'rxjs/operators';
+
+import {EEDriver} from "empty-epsilon-js";
+import {MessageTranslator} from './translate';
+import {NextObserver} from "rxjs/Observer";
+import {OscMessage} from "osc";
 import {Subscription} from "rxjs/Subscription";
 import {processApiSchema} from "./process-schema";
-import {emptyEpsilonSchema, GameSchema} from './ee-schema';
-import {MessageTranslator} from './translate';
-import {OscMessage} from "osc";
-import {NextObserver} from "rxjs/Observer";
 
 export interface OscDriver {
     readonly inbox: Observable<OscMessage>;
@@ -27,10 +29,13 @@ export class OpenEpsilon {
         if (this.isInitialized()) {
             throw new Error('init() called on initialized service');
         }
-        const pulse = Observable.interval(interval);
-        const pollRequests = pulse.switchMap<any, string>(_ => this.monitoredAddresses);
+        const pulse = rxInterval(interval);
+        const pollRequests = pulse.pipe(switchMap<any, string[]>(_ => this.monitoredAddresses));
         this.subscription.push(monitorByAddress(pollRequests, this.eeDriver, this.translator.translateAddressToGameQuery).subscribe(this.oscDriver.outbox));
-        this.subscription.push(executeDriverCommands(this.oscDriver.inbox.filter(m => m.address.startsWith(`/${this.namespace}/`)), this.eeDriver, this.translator.translateOscMessageToGameCommand));
+        this.subscription.push(executeDriverCommands(this.oscDriver.inbox.pipe(
+            filter(m => m.address.startsWith(`/${this.namespace}/`))), 
+            this.eeDriver, this.translator.translateOscMessageToGameCommand)
+        );
     }
 
     isInitialized() {

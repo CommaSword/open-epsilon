@@ -1,8 +1,10 @@
+import {GameCommand, GameQuery} from "./translate";
+import { map, mergeMap } from 'rxjs/operators';
+
+import {EEDriver} from "empty-epsilon-js";
+import {FileSystem} from "kissfs";
 import {Observable} from 'rxjs';
 import {OscMessage} from "osc";
-import {FileSystem} from "kissfs";
-import {GameCommand, GameQuery} from "./translate";
-import {EEDriver} from "empty-epsilon-js";
 import {Subscription} from "rxjs/Subscription";
 
 export const FILE_PATH = 'game-monitor.json';
@@ -32,19 +34,21 @@ export function getMonitoredAddresses(fs: FileSystem): Array<string> {
 
 export function monitorByAddress(pollRequests: Observable<string>, eeDriver: EEDriver, translator: (address: string) => GameQuery): Observable<OscMessage> {
     return pollRequests
-        .map<string, GameQuery>(translator)
-        .flatMap<GameQuery, Array<number>, OscMessage>(
-            (q: GameQuery) => eeDriver.query(q.expr, q.type.length),
-            (q: GameQuery, values: Array<any>) => ({
-                address: q.address,
-                args: values.map((value: any, i: number) => ({type: q.type.charAt(i) as 'i' | 'f', value}))
+        .pipe(map<string, GameQuery>(translator))
+        .pipe(mergeMap<GameQuery, Promise<OscMessage>>(
+            async (q: GameQuery) => {
+                const values = await eeDriver.query<Array<number>>(q.expr, q.type.length);
+                return {
+                    address: q.address,
+                    args: values.map((value: any, i: number) => ({type: q.type.charAt(i) as 'i' | 'f', value}))
+                };
             }))
 }
 
 
 export function executeDriverCommands(pushRequests: Observable<OscMessage>, eeDriver: EEDriver, translator: (message: OscMessage) => GameCommand): Subscription {
     return pushRequests
-        .map<OscMessage, GameCommand>(translator)
+        .pipe(map<OscMessage, GameCommand>(translator))
         .subscribe(gc => eeDriver.command(gc.template, gc.values));
 }
 

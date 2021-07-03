@@ -1,7 +1,8 @@
 import {OscMessage, UDPPort} from "osc";
-import {spy} from "sinon";
-import {expect} from "chai";
+
 import {OscUdpDriver} from "../src/osc-udp-driver";
+import {expect} from "chai";
+import {spy} from "sinon";
 
 function delay(timeout: number) {
     return new Promise(r => setTimeout(r, timeout));
@@ -56,10 +57,8 @@ describe('OscUdpDriver (real network test)', () => {
     });
 
     it('can receive messages', async () => {
-
         udpPort.send(MSG);
         await delay(NETWORK_GRACE);
-
         expect(received).to.have.callCount(1);
         expect(received).to.have.been.calledWith(MSG);
     });

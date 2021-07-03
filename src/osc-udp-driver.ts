@@ -1,9 +1,11 @@
-import {Observable, Subject, Subscription} from 'rxjs';
-import {OscMessage, UDPPort, UdpOptions} from "osc";
+import { Observable, Subject, Subscription, fromEvent } from 'rxjs';
+import { OscMessage, PortEvents, SenderInfo, UDPPort, UdpOptions } from "osc";
+import { groupBy, map, mergeMap } from 'rxjs/operators';
 
-import {NextObserver} from "rxjs/Observer";
-import {NodeStyleEventEmitter} from 'rxjs/observable/FromEventObservable';
-import {OscDriver} from "./service";
+import { NextObserver } from "rxjs/Observer";
+import { OscDriver } from "./service";
+
+type PortMessageEvent = Parameters<PortEvents['message']>
 
 export class OscUdpDriver implements OscDriver {
     public readonly inbox: Observable<OscMessage>;
@@ -22,16 +24,16 @@ export class OscUdpDriver implements OscDriver {
                 metadata: true
             }, options);
         this.port = new UDPPort(options);
-        this.subscription = this.subject.groupBy((msg: OscMessage) => msg.address)
-            .mergeMap((o: Observable<OscMessage>) => {
-                // o is an observable of all messages of the same address
-                // this is the place to use distinctUntilKeyChanged('args', (args1, args2) => deepEqual(args1, args2))
-                // and throttleTime
-                return o;
-            })
+        this.subscription = this.subject
+            .pipe(groupBy((msg: OscMessage) => msg.address))
+            .pipe(mergeMap((o: Observable<OscMessage>) => {
+                    // o is an observable of all messages of the same address
+                    // this is the place to use distinctUntilKeyChanged('args', (args1, args2) => deepEqual(args1, args2))
+                    // and throttleTime
+                    return o;
+                }))
             .subscribe(msg => this.port.send(msg));
-//        this.port.on('message', (m: OscMessage) => console.log('#####MSG', m.address));
-        this.inbox = Observable.fromEvent(this.port as any as NodeStyleEventEmitter, 'message');
+        this.inbox = fromEvent<PortMessageEvent>(this.port as any, 'message').pipe(map(([msg]) => msg));
         console.info(`OSC server listening on ${options.localAddress}:${options.localPort}, sending to ${options.remoteAddress}:${options.remotePort}`)
     }
 
